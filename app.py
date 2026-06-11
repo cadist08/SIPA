@@ -38,8 +38,14 @@ html, body, [data-testid="stAppViewContainer"] {
     font-family: 'Inter', sans-serif;
 }
 
-/* Hide Streamlit chrome */
-#MainMenu, footer, header { visibility: hidden; }
+/* Menyembunyikan elemen bawaan Streamlit tanpa menghilangkan tombol Sidebar */
+#MainMenu, footer { visibility: hidden; }
+[data-testid="stHeader"] { 
+    background-color: transparent !important; 
+}
+[data-testid="stHeaderActionElements"] { 
+    display: none !important; /* Menyembunyikan tombol Deploy dan Menu di kanan atas */
+}
 [data-testid="stDecoration"] { display: none; }
 section[data-testid="stSidebar"] > div:first-child { padding-top: 1rem; }
 
@@ -393,18 +399,6 @@ section[data-testid="stSidebar"] > div:first-child { padding-top: 1rem; }
 .msg-time.user { text-align: right; padding-right: 0.3rem; }
 .msg-time.bot  { text-align: left;  padding-left: 0.3rem; }
 
-/* Input area */
-.chat-input-area {
-    background: rgba(15,35,71,0.6);
-    border: 1px solid rgba(201,170,113,0.2);
-    border-radius: 14px;
-    padding: 0.75rem 1rem;
-    margin-top: 0.75rem;
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-}
-
 /* Override Streamlit input */
 [data-testid="stTextInput"] input {
     background: transparent !important;
@@ -693,69 +687,103 @@ def add_message(role: str, content: str):
 
 
 def render_chat():
-
     st.markdown("""
     <style>
-    .stChatMessage{
+    /* Mengatur lebar area balon chat agar rapi di tengah */
+    .stChatMessage {
         max-width: 850px;
         margin: auto;
     }
 
-    .block-container{
+    .block-container {
         max-width: 1000px !important;
         padding-top: 2rem;
+        padding-bottom: 140px; /* Ruang scroll ekstra agar chat tidak tertutup kotak input */
     }
 
-    [data-testid="stChatInput"]{
-        position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: min(900px, 90%);
-        z-index: 999;
+    /* ── PERBAIKAN POSISI BAWAH ── */
+    /* Membuat kontainer input mepet ke dasar layar */
+    [data-testid="stChatInput"] {
+        max-width: 850px !important;
+        margin: 0 auto !important;
+        padding-bottom: 2px !important; /* Dikecilkan drastis agar tidak ada ruang kosong di bawah */
     }
 
-    [data-testid="stChatInput"] > div{
+    /* Mempercantik kotak inputnya sendiri */
+    [data-testid="stChatInput"] > div {
         border-radius: 18px !important;
-        border: 1px solid rgba(201,170,113,0.25) !important;
+        border: 1px solid rgba(201,170,113,0.3) !important;
         background: #0f172a !important;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important; 
     }
 
-    [data-testid="stChatInput"] textarea{
+    [data-testid="stChatInput"] textarea {
         color: white !important;
+    }
+
+    /* Teks informasi (disclaimer) di bawah kotak input */
+    [data-testid="stChatInput"]::after {
+        content: "SIPA BOT memproses bahasa menggunakan FSM & Regex. Harap periksa kembali keakuratan informasi.";
+        display: block;
+        text-align: center;
+        color: #4a6080;
+        font-size: 0.72rem;
+        margin-top: 8px;      /* Jarak dari kotak input ke teks */
+        margin-bottom: 4px;   /* Jarak dari teks ke batas paling bawah layar */
+        font-weight: 500;
+        letter-spacing: 0.02em;
+    }
+    
+    /* Menghilangkan gradien background bawaan Streamlit di area input (jika ada) */
+    div[data-testid="stChatInputContainer"] {
+        background: transparent !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
-    # Pesan awal
+    # Pesan awal jika belum ada histori
     if not st.session_state.messages:
         welcome = st.session_state.bot.process("halo")
         add_message("bot", welcome)
 
-    # Render chat
+    # Render balon chat yang sudah ada
     for msg in st.session_state.messages:
-
         role = "assistant" if msg["role"] == "bot" else "user"
-
         with st.chat_message(role):
-
             st.markdown(msg["content"])
 
-    # Input ala ChatGPT
-    prompt = st.chat_input(
-        "Ketik pesan Anda..."
-    )
+    # ─────────────────────────────────────────────────────────────────────────
+    # MENGISI RUANG KOSONG: Menampilkan tombol saran JIKA chat baru dimulai
+    # ─────────────────────────────────────────────────────────────────────────
+    quick_prompt = None
+    if len(st.session_state.messages) == 1:
+        _, col_center, _ = st.columns([1, 8, 1]) 
+        
+        with col_center:
+            st.markdown("<div style='text-align: center; color: #7a90b0; font-size: 0.95rem; margin: 3rem 0 1.5rem;'>💡 <strong>Saran Topik Pembicaraan</strong></div>", unsafe_allow_html=True)
+            
+            c1, c2, c3 = st.columns(3)
+            if c1.button("📄 Syarat KTP Baru", use_container_width=True):
+                quick_prompt = "Apa saja syarat membuat KTP baru?"
+            if c2.button("📜 Akta Kelahiran", use_container_width=True):
+                quick_prompt = "Syarat membuat akta kelahiran"
+            if c3.button("📣 Buat Pengaduan", use_container_width=True):
+                quick_prompt = "Saya ingin mengajukan pengaduan"
+                
+            st.markdown("<div style='text-align: center; color: #4a6080; font-size: 0.8rem; margin-top: 2rem;'>Atau ketik langsung pertanyaan Anda di kotak bawah 👇</div>", unsafe_allow_html=True)
 
-    if prompt:
+    # ─────────────────────────────────────────────────────────────────────────
 
-        add_message("user", prompt)
+    # Input box ala ChatGPT
+    prompt = st.chat_input("Ketik pesan Anda...")
+    
+    final_prompt = prompt or quick_prompt
 
-        response = st.session_state.bot.process(prompt)
-
+    if final_prompt:
+        add_message("user", final_prompt)
+        response = st.session_state.bot.process(final_prompt)
         add_message("bot", response)
-
         st.rerun()
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # ROUTER HALAMAN
