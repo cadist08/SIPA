@@ -14,6 +14,7 @@ REGEX = {
 KEYWORDS: dict[str, list[str]] = {
     "salam": ["halo", "hai", "hi", "hey", "selamat pagi", "selamat siang", "selamat sore", "selamat malam", "assalamu", "assalamualaikum", "helo", "hola", "pagi", "siang", "sore", "malam"],
     "terima_kasih": ["terima kasih", "makasih", "thanks", "thank you", "tks", "tengkyu", "terimakasih", "trims", "thx"],
+    "identitas_bot": ["siapa kamu", "kamu siapa", "bot apa ini", "tentang kamu", "sipa bot", "pembuatmu", "kamu robot"],
     "info_ktp": ["info ktp", "informasi ktp", "syarat ktp", "prosedur ktp", "cara buat ktp", "buat ktp", "ktp", "e-ktp", "e ktp", "kartu tanda penduduk"],
     "ajukan_ktp": ["daftar ktp", "pengajuan ktp", "ajukan ktp", "minta ktp", "buat ktp sekarang", "daftar sekarang ktp", "proses ktp"],
     "info_kk": ["info kk", "informasi kk", "syarat kk", "kartu keluarga", "cara buat kk", "buat kk", "prosedur kk"],
@@ -59,6 +60,8 @@ def detect_intent(text: str) -> str:
         return "faq"
     if _contains_keyword(text, KEYWORDS["bantuan"]):
         return "bantuan"
+    if _contains_keyword(text, KEYWORDS["identitas_bot"]):
+        return "identitas_bot"
     if _contains_keyword(text, KEYWORDS["salam"]):
         return "salam"
     if _contains_keyword(text, KEYWORDS["terima_kasih"]):
@@ -128,15 +131,25 @@ def resp_sambutan() -> str:
 
 def resp_menu_utama() -> str:
     return (
-        "Baik! Ada yang bisa saya bantu lagi? 😊\n\n"
-        "Saya bisa membantu dengan:\n"
+        "Apakah ada layanan administrasi lain yang Anda butuhkan? 😊\n\n"
         "• **KTP / e-KTP** — info atau pengajuan\n"
         "• **Kartu Keluarga** — info atau pengajuan\n"
         "• **Akta Kelahiran** — info atau pengajuan\n"
         "• **Surat Pindah** — pengajuan\n"
         "• **Pengaduan** — lapor masalah di lingkungan Anda\n"
         "• **Cek Status** — pantau pengajuan atau laporan\n"
-        "• **FAQ** — jam layanan, biaya, dan persyaratan"
+        "• **FAQ** — jam layanan, biaya, dan persyaratan\n\n"
+        "Ketik apa yang ingin Anda lakukan!"
+    )
+
+def resp_identitas() -> str:
+    return (
+        "🤖 **Saya adalah SIPA BOT!**\n\n"
+        "Asisten digital resmi untuk membantu masyarakat mengurus pelayanan administrasi "
+        "secara cepat dan praktis di **Kantor Pusat - Pati**.\n\n"
+        "Karena saya adalah sistem otomatis, saya difokuskan khusus untuk membantu permohonan "
+        "dokumen kependudukan (KTP, KK, Akta, Surat Pindah) dan pelaporan pengaduan masyarakat.\n\n"
+        "Ada layanan yang ingin Anda urus hari ini?"
     )
 
 def resp_info_ktp() -> str:
@@ -215,7 +228,7 @@ def resp_faq() -> str:
         "• Surat Pindah : 1–3 hari kerja\n\n"
         "**📍 Lokasi Pelayanan**\n"
         "Kantor Kelurahan/Kecamatan setempat atau\n"
-        "Dinas Kependudukan dan Catatan Sipil Kota/Kabupaten\n\n"
+        "Dinas Kependudukan dan Catatan Sipil\n\n"
         "Ada pertanyaan lain? Silakan tanya saya 😊"
     )
 
@@ -228,23 +241,25 @@ def resp_bantuan() -> str:
         "• _\"Lapor jalan rusak\"_ → kirim pengaduan\n"
         "• _\"Cek tiket KTP-20250601-1234\"_ → pantau status\n"
         "• _\"FAQ\"_ → jam buka, biaya, dll\n\n"
-        "Tidak perlu pilih nomor menu — cukup ceritakan kebutuhan Anda! 😊"
+        "Tidak perlu pilih nomor menu — cukup ceritakan kebutuhan administrasi Anda!"
     )
 
 def resp_terima_kasih() -> str:
     pilihan = [
-        "Sama-sama! Senang bisa membantu Anda 😊 Ada yang bisa saya bantu lagi?",
-        "Terima kasih sudah menggunakan SIPA BOT! Ada lagi yang ingin ditanyakan? 🙏",
-        "Dengan senang hati! Jangan ragu untuk bertanya kapan saja 😊",
+        "Sama-sama! Senang bisa membantu Anda 😊 Ada dokumen administrasi lain yang perlu diurus?",
+        "Terima kasih kembali sudah menggunakan SIPA BOT! Ada lagi layanan publik yang ingin ditanyakan? 🙏",
+        "Dengan senang hati! SIPA BOT siap membantu administrasi Anda kapan saja 😊",
     ]
     return random.choice(pilihan)
 
 def resp_tidak_mengerti() -> str:
-    pilihan = [
-        "Maaf, saya belum memahami maksud Anda 🤔\n\nCoba ceritakan kebutuhan Anda lebih jelas, atau ketik **\"bantuan\"** untuk melihat panduan.",
-        "Hmm, saya kurang paham permintaan Anda. Bisa diulang dengan kalimat lain?\n\nAtau ketik **\"menu\"** untuk melihat layanan yang tersedia.",
-    ]
-    return random.choice(pilihan)
+    return (
+        "Mohon maaf, saya adalah bot pelayanan administrasi sehingga kurang mengerti pertanyaan atau topik tersebut. 😅\n\n"
+        "Namun, saya **sangat ahli** dalam membantu Anda mengurus dokumen berikut:\n"
+        "🔹 **KTP, Kartu Keluarga, Akta Kelahiran, dan Surat Pindah**\n"
+        "🔹 **Laporan Pengaduan Masyarakat** (Jalan rusak, fasilitas umum, dll)\n\n"
+        "Ketik **\"Menu\"** untuk melihat daftar layanan, atau beritahu saya dokumen apa yang ingin Anda urus hari ini!"
+    )
 
 class SIPABotEngine:
     def __init__(self):
@@ -282,10 +297,13 @@ class SIPABotEngine:
             self.fsm.transition("salam")
             return resp_sambutan()
 
+        # Intersepsi Global (Bisa dipanggil dari mana saja)
         if intent == "terima_kasih":
             return resp_terima_kasih()
         if intent == "bantuan":
             return resp_bantuan()
+        if intent == "identitas_bot":
+            return resp_identitas()
         if intent == "salam" and state == State.MENU_UTAMA:
             return "Halo lagi! 😊 " + resp_menu_utama()
 
@@ -335,6 +353,8 @@ class SIPABotEngine:
             if intent == "faq":
                 self.fsm.transition("faq")
                 return resp_faq()
+            
+            # Jika state Menu Utama tapi input random
             return resp_tidak_mengerti()
 
         if state == State.INFO_KTP:
@@ -595,6 +615,7 @@ class SIPABotEngine:
                     + resp_menu_utama()
                 )
 
+        # Fallback Terakhir jika intent dikenali tapi salah tempat
         if intent == "info_ktp":
             self.fsm.force_state(State.INFO_KTP)
             return resp_info_ktp()
