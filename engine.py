@@ -1,150 +1,46 @@
-r"""
-engine.py — Mesin Pemrosesan Bahasa Alami SIPA BOT
-====================================================
-Mengimplementasikan konsep Teori Bahasa dan Otomata:
-1. Pencocokan Pola (Regular Expression) untuk validasi input
-2. Pengenalan Kata Kunci (Keyword Matching) untuk deteksi intent
-3. Transisi State berdasarkan intent yang terdeteksi
-
-Pola Regex yang digunakan:
-    NIK        : ^\d{16}$                          (tepat 16 digit angka)
-    HP         : ^(08|628|\+628)\d{8,11}$          (nomor HP Indonesia)
-    Email      : ^[\w.+-]+@[\w-]+\.[a-zA-Z]{2,}$  (format email standar)
-    Nomor Tiket: ^(KTP|KK|AKTA|PINDAH|LPR)-\d{8}-\d{4}$
-"""
-
 import re
 import random
 import string
 from datetime import datetime
 from FSM import FSMachine, State
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# POLA REGULAR EXPRESSION (Σ — Alphabet Validasi)
-# ─────────────────────────────────────────────────────────────────────────────
 REGEX = {
-    # NIK: tepat 16 digit angka (tidak boleh kurang/lebih)
     "nik": re.compile(r"^\d{16}$"),
-
-    # Nomor HP Indonesia: diawali 08, 628, atau +628, diikuti 8–11 digit
     "hp": re.compile(r"^(08|628|\+628)\d{8,11}$"),
-
-    # Format email standar
     "email": re.compile(r"^[\w.+\-]+@[\w\-]+\.[a-zA-Z]{2,}$"),
-
-    # Nomor tiket: PREFIX-YYYYMMDD-XXXX
     "tiket": re.compile(r"^(KTP|KK|AKTA|PINDAH|LPR)-\d{8}-\d{4}$"),
 }
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# KAMUS KATA KUNCI (Σ — Alphabet Intent)
-# Intent detection menggunakan pencocokan substring atau regex sederhana
-# ─────────────────────────────────────────────────────────────────────────────
 KEYWORDS: dict[str, list[str]] = {
-    "salam": [
-        "halo", "hai", "hi", "hey", "selamat pagi", "selamat siang",
-        "selamat sore", "selamat malam", "assalamu", "assalamualaikum",
-        "helo", "hola", "pagi", "siang", "sore", "malam"
-    ],
-    "terima_kasih": [
-        "terima kasih", "makasih", "thanks", "thank you", "tks",
-        "tengkyu", "terimakasih", "trims", "thx"
-    ],
-    "info_ktp": [
-        "info ktp", "informasi ktp", "syarat ktp", "prosedur ktp",
-        "cara buat ktp", "buat ktp", "ktp", "e-ktp", "e ktp",
-        "kartu tanda penduduk"
-    ],
-    "ajukan_ktp": [
-        "daftar ktp", "pengajuan ktp", "ajukan ktp", "minta ktp",
-        "buat ktp sekarang", "daftar sekarang ktp", "proses ktp"
-    ],
-    "info_kk": [
-        "info kk", "informasi kk", "syarat kk", "kartu keluarga",
-        "cara buat kk", "buat kk", "prosedur kk"
-    ],
-    "ajukan_kk": [
-        "daftar kk", "pengajuan kk", "ajukan kk", "minta kk",
-        "buat kk sekarang", "proses kk"
-    ],
-    "info_akta": [
-        "info akta", "akta kelahiran", "syarat akta", "cara buat akta",
-        "buat akta", "prosedur akta", "akta lahir"
-    ],
-    "ajukan_akta": [
-        "daftar akta", "pengajuan akta", "ajukan akta",
-        "buat akta sekarang", "proses akta"
-    ],
-    "ajukan_pindah": [
-        "pindah", "surat pindah", "domisili baru", "pindah domisili",
-        "mutasi penduduk", "pengajuan pindah", "ajukan pindah"
-    ],
-    "pengaduan": [
-        "lapor", "pengaduan", "aduan", "complaint", "laporkan",
-        "jalan rusak", "lampu mati", "sampah", "drainase", "banjir",
-        "masalah", "keluhan", "mengadu"
-    ],
-    "cek_status": [
-        "cek status", "cek tiket", "status pengajuan", "status laporan",
-        "lihat status", "periksa tiket", "nomor tiket", "sudah sampai mana",
-        "lacak", "tracking", "pantau"
-    ],
-    "faq": [
-        "faq", "pertanyaan", "tanya", "jam buka", "jam pelayanan",
-        "biaya", "gratis", "berapa lama", "syarat umum", "apa saja",
-        "ketentuan", "persyaratan"
-    ],
-    "konfirmasi_ya": [
-        "ya", "iya", "yes", "benar", "betul", "setuju", "ok",
-        "oke", "lanjut", "submit", "kirim", "konfirmasi", "yep", "yap"
-    ],
-    "konfirmasi_tidak": [
-        "tidak", "no", "batal", "cancel", "ulang", "salah",
-        "ganti", "koreksi", "nope", "nggak", "enggak"
-    ],
-    "bantuan": [
-        "help", "bantuan", "bingung", "tidak mengerti", "tidak tau",
-        "apa yang bisa", "menu", "bisa apa", "fitur"
-    ],
+    "salam": ["halo", "hai", "hi", "hey", "selamat pagi", "selamat siang", "selamat sore", "selamat malam", "assalamu", "assalamualaikum", "helo", "hola", "pagi", "siang", "sore", "malam"],
+    "terima_kasih": ["terima kasih", "makasih", "thanks", "thank you", "tks", "tengkyu", "terimakasih", "trims", "thx"],
+    "info_ktp": ["info ktp", "informasi ktp", "syarat ktp", "prosedur ktp", "cara buat ktp", "buat ktp", "ktp", "e-ktp", "e ktp", "kartu tanda penduduk"],
+    "ajukan_ktp": ["daftar ktp", "pengajuan ktp", "ajukan ktp", "minta ktp", "buat ktp sekarang", "daftar sekarang ktp", "proses ktp"],
+    "info_kk": ["info kk", "informasi kk", "syarat kk", "kartu keluarga", "cara buat kk", "buat kk", "prosedur kk"],
+    "ajukan_kk": ["daftar kk", "pengajuan kk", "ajukan kk", "minta kk", "buat kk sekarang", "proses kk"],
+    "info_akta": ["info akta", "akta kelahiran", "syarat akta", "cara buat akta", "buat akta", "prosedur akta", "akta lahir"],
+    "ajukan_akta": ["daftar akta", "pengajuan akta", "ajukan akta", "buat akta sekarang", "proses akta"],
+    "ajukan_pindah": ["pindah", "surat pindah", "domisili baru", "pindah domisili", "mutasi penduduk", "pengajuan pindah", "ajukan pindah"],
+    "pengaduan": ["lapor", "pengaduan", "aduan", "complaint", "laporkan", "jalan rusak", "lampu mati", "sampah", "drainase", "banjir", "masalah", "keluhan", "mengadu"],
+    "cek_status": ["cek status", "cek tiket", "status pengajuan", "status laporan", "lihat status", "periksa tiket", "nomor tiket", "sudah sampai mana", "lacak", "tracking", "pantau"],
+    "faq": ["faq", "pertanyaan", "tanya", "jam buka", "jam pelayanan", "biaya", "gratis", "berapa lama", "syarat umum", "apa saja", "ketentuan", "persyaratan"],
+    "konfirmasi_ya": ["ya", "iya", "yes", "benar", "betul", "setuju", "ok", "oke", "lanjut", "submit", "kirim", "konfirmasi", "yep", "yap"],
+    "konfirmasi_tidak": ["tidak", "no", "batal", "cancel", "ulang", "salah", "ganti", "koreksi", "nope", "nggak", "enggak"],
+    "bantuan": ["help", "bantuan", "bingung", "tidak mengerti", "tidak tau", "apa yang bisa", "menu", "bisa apa", "fitur"],
 }
 
-
 def _contains_keyword(text: str, keywords: list[str]) -> bool:
-    """Cek apakah teks mengandung salah satu kata kunci (case-insensitive)."""
     t = text.lower()
     return any(kw in t for kw in keywords)
 
-
 def detect_intent(text: str) -> str:
-    """
-    Mendeteksi intent dari input pengguna menggunakan keyword matching.
-    Mengembalikan string intent yang sesuai dengan simbol transisi FSM.
-
-    Urutan prioritas (dari paling spesifik ke umum):
-    1. Cek status/tiket (diutamakan agar tidak bentrok dengan kata kunci lain)
-    2. Pengaduan & layanan lain
-    3. Pengajuan spesifik (lebih spesifik dari info)
-    4. Informasi layanan
-    5. FAQ & bantuan
-    6. Salam & terima kasih
-    7. Konfirmasi ya/tidak (terakhir — hanya relevan saat state konfirmasi)
-    """
-    # Cek regex nomor tiket murni — prioritas utama
     cleaned = text.strip().upper()
     if REGEX["tiket"].match(cleaned):
         return "nomor_tiket"
-
-    # Cek status / pelacakan
     if _contains_keyword(text, KEYWORDS["cek_status"]):
         return "cek_status"
-
-    # Pengaduan
     if _contains_keyword(text, KEYWORDS["pengaduan"]):
         return "pengaduan"
-
-    # Pengajuan (lebih spesifik dari sekadar info)
     if _contains_keyword(text, KEYWORDS["ajukan_ktp"]):
         return "ajukan_ktp"
     if _contains_keyword(text, KEYWORDS["ajukan_kk"]):
@@ -153,43 +49,27 @@ def detect_intent(text: str) -> str:
         return "ajukan_akta"
     if _contains_keyword(text, KEYWORDS["ajukan_pindah"]):
         return "ajukan_pindah"
-
-    # Informasi layanan
     if _contains_keyword(text, KEYWORDS["info_ktp"]):
         return "info_ktp"
     if _contains_keyword(text, KEYWORDS["info_kk"]):
         return "info_kk"
     if _contains_keyword(text, KEYWORDS["info_akta"]):
         return "info_akta"
-
-    # FAQ & bantuan
     if _contains_keyword(text, KEYWORDS["faq"]):
         return "faq"
     if _contains_keyword(text, KEYWORDS["bantuan"]):
         return "bantuan"
-
-    # Salam & terima kasih
     if _contains_keyword(text, KEYWORDS["salam"]):
         return "salam"
     if _contains_keyword(text, KEYWORDS["terima_kasih"]):
         return "terima_kasih"
-
-    # Konfirmasi ya/tidak (paling akhir)
     if _contains_keyword(text, KEYWORDS["konfirmasi_ya"]):
         return "konfirmasi_ya"
     if _contains_keyword(text, KEYWORDS["konfirmasi_tidak"]):
         return "konfirmasi_tidak"
-
     return "unknown"
 
-
 def validate_input(field: str, value: str) -> tuple[bool, str]:
-    """
-    Validasi input menggunakan Regular Expression.
-
-    Return:
-        (valid: bool, pesan_error: str)
-    """
     v = value.strip()
     if field == "nik":
         if not REGEX["nik"].match(v):
@@ -209,42 +89,23 @@ def validate_input(field: str, value: str) -> tuple[bool, str]:
         return True, ""
     return True, ""
 
-
 def generate_ticket(prefix: str) -> str:
-    """
-    Membuat nomor tiket otomatis dengan format:
-    PREFIX-YYYYMMDD-XXXX
-    Contoh: KTP-20250601-4821
-    """
     tanggal = datetime.now().strftime("%Y%m%d")
     suffix = "".join(random.choices(string.digits, k=4))
     return f"{prefix}-{tanggal}-{suffix}"
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# DATABASE STATUS TIKET (Simulasi in-memory)
-# ─────────────────────────────────────────────────────────────────────────────
 FAKE_TICKET_DB: dict[str, dict] = {}
 
-
 def query_ticket_status(nomor: str) -> dict | None:
-    """Cek status tiket dari database simulasi."""
     return FAKE_TICKET_DB.get(nomor.upper())
 
-
 def register_ticket(nomor: str, jenis: str, nama: str):
-    """Daftarkan tiket baru ke database simulasi."""
     FAKE_TICKET_DB[nomor] = {
         "jenis": jenis,
         "nama": nama,
         "status": "📋 Diterima — Menunggu verifikasi petugas",
         "tanggal": datetime.now().strftime("%d %B %Y, %H:%M"),
     }
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# TEKS RESPONS (Template Pesan Bot)
-# ─────────────────────────────────────────────────────────────────────────────
 
 def resp_sambutan() -> str:
     return (
@@ -265,7 +126,6 @@ def resp_sambutan() -> str:
         "_\"Saya mau buat KTP\"_ atau _\"Mau lapor jalan rusak\"_"
     )
 
-
 def resp_menu_utama() -> str:
     return (
         "Baik! Ada yang bisa saya bantu lagi? 😊\n\n"
@@ -278,7 +138,6 @@ def resp_menu_utama() -> str:
         "• **Cek Status** — pantau pengajuan atau laporan\n"
         "• **FAQ** — jam layanan, biaya, dan persyaratan"
     )
-
 
 def resp_info_ktp() -> str:
     return (
@@ -298,7 +157,6 @@ def resp_info_ktp() -> str:
         "**Jam Layanan:** Senin–Jumat, 08.00–15.00 WIB\n\n"
         "Mau langsung mengajukan KTP secara online? Ketik _\"daftar KTP\"_"
     )
-
 
 def resp_info_kk() -> str:
     return (
@@ -320,7 +178,6 @@ def resp_info_kk() -> str:
         "Mau ajukan KK? Ketik _\"daftar KK\"_"
     )
 
-
 def resp_info_akta() -> str:
     return (
         "📜 **Informasi Pembuatan Akta Kelahiran**\n\n"
@@ -340,7 +197,6 @@ def resp_info_akta() -> str:
         "**Catatan:** Pengurusan anak usia < 60 hari tidak dikenakan denda\n\n"
         "Mau ajukan akta? Ketik _\"daftar akta\"_"
     )
-
 
 def resp_faq() -> str:
     return (
@@ -363,7 +219,6 @@ def resp_faq() -> str:
         "Ada pertanyaan lain? Silakan tanya saya 😊"
     )
 
-
 def resp_bantuan() -> str:
     return (
         "🤔 Sepertinya Anda butuh panduan. Berikut yang bisa saya bantu:\n\n"
@@ -376,7 +231,6 @@ def resp_bantuan() -> str:
         "Tidak perlu pilih nomor menu — cukup ceritakan kebutuhan Anda! 😊"
     )
 
-
 def resp_terima_kasih() -> str:
     pilihan = [
         "Sama-sama! Senang bisa membantu Anda 😊 Ada yang bisa saya bantu lagi?",
@@ -385,45 +239,24 @@ def resp_terima_kasih() -> str:
     ]
     return random.choice(pilihan)
 
-
 def resp_tidak_mengerti() -> str:
     pilihan = [
-        "Maaf, saya belum memahami maksud Anda 🤔\n\nCoba ceritakan kebutuhan Anda lebih jelas, "
-        "atau ketik **\"bantuan\"** untuk melihat panduan.",
-        "Hmm, saya kurang paham permintaan Anda. Bisa diulang dengan kalimat lain?\n\n"
-        "Atau ketik **\"menu\"** untuk melihat layanan yang tersedia.",
+        "Maaf, saya belum memahami maksud Anda 🤔\n\nCoba ceritakan kebutuhan Anda lebih jelas, atau ketik **\"bantuan\"** untuk melihat panduan.",
+        "Hmm, saya kurang paham permintaan Anda. Bisa diulang dengan kalimat lain?\n\nAtau ketik **\"menu\"** untuk melihat layanan yang tersedia.",
     ]
     return random.choice(pilihan)
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# KELAS UTAMA ENGINE CHATBOT
-# ─────────────────────────────────────────────────────────────────────────────
-
 class SIPABotEngine:
-    """
-    Engine utama SIPA BOT yang mengintegrasikan:
-    - FSM (mengatur alur percakapan)
-    - Intent Detection (keyword matching)
-    - Regex Validation (validasi input pengguna)
-    - Response Generation (menghasilkan respons)
-
-    Atribut:
-        fsm       : instance FSMachine
-        context   : menyimpan data sementara selama sesi pengajuan
-    """
-
     def __init__(self):
         self.fsm = FSMachine()
-        self.context: dict = {}          # Data sementara per sesi pengajuan
-        self.pengaduan_type: str = ""    # Jenis pengaduan yang dilaporkan
+        self.context: dict = {}
+        self.pengaduan_type: str = ""
 
     def _reset_context(self):
         self.context = {}
         self.pengaduan_type = ""
 
     def _infer_pengaduan_type(self, text: str) -> str:
-        """Deteksi jenis pengaduan dari teks pengguna."""
         t = text.lower()
         if any(k in t for k in ["jalan", "aspal", "lubang"]):
             return "Jalan Rusak"
@@ -438,21 +271,6 @@ class SIPABotEngine:
         return "Pengaduan Umum"
 
     def process(self, user_input: str) -> str:
-        """
-        Fungsi utama pemrosesan input.
-
-        Alur:
-        1. Deteksi intent dari input pengguna
-        2. Tentukan aksi transisi berdasarkan state & intent saat ini
-        3. Jalankan transisi FSM
-        4. Generate dan kembalikan respons
-
-        Parameter:
-            user_input (str): teks yang diketik pengguna
-
-        Return:
-            str: respons bot dalam format Markdown
-        """
         raw = user_input.strip()
         if not raw:
             return "Silakan ketik pesan Anda 😊"
@@ -460,12 +278,10 @@ class SIPABotEngine:
         state = self.fsm.current_state
         intent = detect_intent(raw)
 
-        # ── IDLE: State awal, sambut pengguna ──────────────────────────────
         if state == State.IDLE:
             self.fsm.transition("salam")
             return resp_sambutan()
 
-        # ── Override global: salam, terima kasih, bantuan (dari state apa pun)
         if intent == "terima_kasih":
             return resp_terima_kasih()
         if intent == "bantuan":
@@ -473,11 +289,6 @@ class SIPABotEngine:
         if intent == "salam" and state == State.MENU_UTAMA:
             return "Halo lagi! 😊 " + resp_menu_utama()
 
-        # ══════════════════════════════════════════════════════════════════
-        # STATE MACHINE — Pemrosesan per state
-        # ══════════════════════════════════════════════════════════════════
-
-        # ── MENU UTAMA ─────────────────────────────────────────────────────
         if state == State.MENU_UTAMA:
             if intent == "info_ktp":
                 self.fsm.transition("info_ktp")
@@ -526,7 +337,6 @@ class SIPABotEngine:
                 return resp_faq()
             return resp_tidak_mengerti()
 
-        # ── INFO STATE (tampilkan info lalu kembali ke menu) ───────────────
         if state == State.INFO_KTP:
             if intent == "ajukan_ktp":
                 self._reset_context()
@@ -554,10 +364,6 @@ class SIPABotEngine:
         if state == State.FAQ:
             self.fsm.force_state(State.MENU_UTAMA)
             return resp_menu_utama()
-
-        # ══════════════════════════════════════════════════════════════════
-        # ALUR PENGAJUAN KTP (q7–q12)
-        # ══════════════════════════════════════════════════════════════════
 
         if state == State.KTP_NAMA:
             self.context["nama"] = raw.title()
@@ -596,10 +402,6 @@ class SIPABotEngine:
                 self.fsm.force_state(State.MENU_UTAMA)
                 return "❌ Pengajuan dibatalkan.\n\n" + resp_menu_utama()
 
-        # ══════════════════════════════════════════════════════════════════
-        # ALUR PENGAJUAN KK (q14–q19)
-        # ══════════════════════════════════════════════════════════════════
-
         if state == State.KK_NAMA:
             self.context["nama"] = raw.title()
             self.fsm.force_state(State.KK_NIK)
@@ -637,10 +439,6 @@ class SIPABotEngine:
                 self.fsm.force_state(State.MENU_UTAMA)
                 return "❌ Pengajuan dibatalkan.\n\n" + resp_menu_utama()
 
-        # ══════════════════════════════════════════════════════════════════
-        # ALUR PENGAJUAN AKTA KELAHIRAN (q21–q26)
-        # ══════════════════════════════════════════════════════════════════
-
         if state == State.AKTA_NAMA:
             self.context["nama"] = raw.title()
             self.fsm.force_state(State.AKTA_NIK)
@@ -677,10 +475,6 @@ class SIPABotEngine:
                 self._reset_context()
                 self.fsm.force_state(State.MENU_UTAMA)
                 return "❌ Pengajuan dibatalkan.\n\n" + resp_menu_utama()
-
-        # ══════════════════════════════════════════════════════════════════
-        # ALUR PENGAJUAN SURAT PINDAH (q28–q34)
-        # ══════════════════════════════════════════════════════════════════
 
         if state == State.PINDAH_NAMA:
             self.context["nama"] = raw.title()
@@ -724,10 +518,6 @@ class SIPABotEngine:
                 self.fsm.force_state(State.MENU_UTAMA)
                 return "❌ Pengajuan dibatalkan.\n\n" + resp_menu_utama()
 
-        # ══════════════════════════════════════════════════════════════════
-        # ALUR PENGADUAN (q35–q38)
-        # ══════════════════════════════════════════════════════════════════
-
         if state == State.PENGADUAN:
             self.pengaduan_type = self._infer_pengaduan_type(raw)
             self.context["jenis"] = self.pengaduan_type
@@ -764,12 +554,7 @@ class SIPABotEngine:
                 + resp_menu_utama()
             )
 
-        # ══════════════════════════════════════════════════════════════════
-        # ALUR CEK STATUS (q39–q40)
-        # ══════════════════════════════════════════════════════════════════
-
         if state == State.CEK_STATUS:
-            # Coba ekstrak nomor tiket dari input
             words = raw.upper().split()
             tiket_found = None
             for w in words:
@@ -777,7 +562,6 @@ class SIPABotEngine:
                     tiket_found = w
                     break
             if not tiket_found:
-                # Coba cocokkan seluruh input
                 if REGEX["tiket"].match(raw.upper().strip()):
                     tiket_found = raw.upper().strip()
 
@@ -811,8 +595,6 @@ class SIPABotEngine:
                     + resp_menu_utama()
                 )
 
-        # ── Fallback: tidak ada transisi yang cocok ────────────────────────
-        # Coba deteksi intent dari state mana pun (navigasi bebas)
         if intent == "info_ktp":
             self.fsm.force_state(State.INFO_KTP)
             return resp_info_ktp()
@@ -837,8 +619,6 @@ class SIPABotEngine:
             return "📣 Ceritakan masalah yang ingin Anda laporkan:"
 
         return resp_tidak_mengerti()
-
-    # ── Helper: ringkasan konfirmasi ───────────────────────────────────────
 
     def _ringkasan_konfirmasi(self, jenis: str) -> str:
         return (
